@@ -7,8 +7,8 @@ import startinpy
 def cropped_laz(filename='./46AN1_20.LAZ'):
     las = laspy.read(filename)
 
-    x_min, x_max = 184130, 184180
-    y_min, y_max = 420410, 420460
+    x_min, x_max = 184130, 184630
+    y_min, y_max = 420410, 420910
 
     mask = (
             (las.x >= x_min) & (las.x <= x_max) &
@@ -23,13 +23,13 @@ def cropped_laz(filename='./46AN1_20.LAZ'):
 
     return cropped_las
 
-def gftin(cropped_las, r_max=1.0, alpha_max=0.5):
+def gftin(cropped_las, r_max=0.5, alpha_max=0.3):
     # step 1, extract the lowest points from grids
     min_x, max_x = min(cropped_las[:, 0]), max(cropped_las[:, 0])
     min_y, max_y = min(cropped_las[:, 1]), max(cropped_las[:, 1])
     # print(min_x,min_y,max_x,max_y)
 
-    grid_len = 20
+    grid_len = 80 #argument
     i, j = min_x, min_y
     lowest_p = []
     while i <= max_x and j <= max_y:
@@ -83,14 +83,13 @@ def gftin(cropped_las, r_max=1.0, alpha_max=0.5):
                         e_alpha = alpha
                         i_selected = m
                         insert_pt = allpts[i_selected][0],allpts[i_selected][1],allpts[i_selected][2]
-        print(insert_pt)
         if insert_pt:
             new_dl.insert_one_pt(allpts[i_selected][0], allpts[i_selected][1],allpts[i_selected][2])
             allpts = np.delete(allpts,i_selected,axis=0)
-            print(len(allpts))
 
-        print(len(new_dl.points))
-
+    f = open("k.txt", "w")
+    f.writelines(new_dl.points.tolist())
+    f.close()
     return new_dl.points
 
 def p_within_tri(pt,tri):

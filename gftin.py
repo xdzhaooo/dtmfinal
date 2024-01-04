@@ -65,15 +65,17 @@ def gftin(cropped_las, r_max=1.0, alpha_max=0.5):
     e_alpha = 0
     allpts = cropped_las.copy()
     print('len',len(allpts))
+    tin_pt = new_dl.triangles
+    rudi_tin_pts = new_dl.points
     while e_r < r_max and e_alpha < alpha_max and len(allpts)>0:
         e_r = r_max
         e_alpha = alpha_max
         insert_pt = None
         for m in range(len(allpts)):
             pt = allpts[m]
-            for n in range(len(new_dl.triangles)):
-                tri_list = list(new_dl.triangles[n])
-                tri = new_dl.points[tri_list]
+            for n in range(len(tin_pt)):
+                tri_list = list(tin_pt[n])
+                tri = rudi_tin_pts[tri_list]
                 if p_within_tri(pt,tri):
                     r, alpha = cal_r_alpha(pt,tri)
                     if e_r > r and e_alpha > alpha:              # 写到一行对吗，不确定？？？？？？？？？？？

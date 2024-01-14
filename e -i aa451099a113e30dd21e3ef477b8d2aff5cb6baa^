@@ -1,0 +1,43 @@
+[33mcommit 34ff7b9f75f54746435efc88521175d3c463d223[m[33m ([m[1;36mHEAD -> [m[1;32mlaplace_processing[m[33m)[m
+Author: xdzhaooo <150081265+xdzhaooo@users.noreply.github.com>
+Date:   Sun Jan 14 11:37:31 2024 +0100
+
+    add gftin
+
+[33mcommit 748bd391b71890b0f396c6d4da08e1af9826768b[m
+Author: xdzhaooo <150081265+xdzhaooo@users.noreply.github.com>
+Date:   Fri Jan 5 00:54:32 2024 +0100
+
+    105
+
+[33mcommit 5ddeb4dab826b39b9ba6103ffff1e070dee136ec[m
+Author: xdzhaooo <150081265+xdzhaooo@users.noreply.github.com>
+Date:   Thu Jan 4 16:18:47 2024 +0100
+
+    插入点后不改变tin
+    
+    在每次插入点后，不改变原有tin
+
+[33mcommit 4f15f1db306fd85170a9279118182eecce40c7e5[m[33m ([m[1;32mgftin_startinpy[m[33m)[m
+Author: xdzhaooo <150081265+xdzhaooo@users.noreply.github.com>
+Date:   Thu Jan 4 16:04:17 2024 +0100
+
+    success
+
+[33mcommit aa451099a113e30dd21e3ef477b8d2aff5cb6baa[m[33m ([m[1;32mmain[m[33m, [m[1;32mgftin_tinprocess[m[33m)[m
+Author: xdzhaooo <150081265+xdzhaooo@users.noreply.github.com>
+Date:   Wed Jan 3 20:26:11 2024 +0100
+
+    startinprocess
+
+[33mcommit a103609ca9dea1f8dfbac0020500c8e9bb8578cd[m
+Author: xdzhaooo <150081265+xdzhaooo@users.noreply.github.com>
+Date:   Tue Jan 2 22:29:25 2024 +0100
+
+    1.2
+
+[33mcommit baae671353d5099bc0f0b1a8168c6e506b491412[m
+Author: xdzhaooo <150081265+xdzhaooo@users.noreply.github.com>
+Date:   Tue Jan 2 14:35:53 2024 +0100
+
+    Initial commit

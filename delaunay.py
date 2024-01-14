@@ -50,8 +50,6 @@ class DelaunayTriangulation:
         a = self_pts[mask][0]
         pt_ymin = a
 
-
-
         # for pt in self_pts:
         b = [9999999999999, a[1]]
         convexhull_pts = [a.tolist()]

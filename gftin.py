@@ -2,13 +2,15 @@ import numpy as np
 import laspy
 import delaunay as dl
 import startinpy
+from scipy.spatial import cKDTree
+from matplotlib import pyplot as plt
 
 
-def cropped_laz(filename='./46AN1_20.LAZ'):
+def cropped_laz(bbx_centre=(184380,420660),size=500,buffer=50,filename='./46AN1_20.LAZ'):
     las = laspy.read(filename)
 
-    x_min, x_max = 184130, 184630
-    y_min, y_max = 420410, 420910
+    x_min, x_max = bbx_centre[0]-(size/2+buffer), bbx_centre[0]+(size/2+buffer) # 500m grid with buffer 50m
+    y_min, y_max = bbx_centre[1]-(size/2+buffer), bbx_centre[1]+(size/2+buffer)
 
     mask = (
             (las.x >= x_min) & (las.x <= x_max) &
@@ -23,94 +25,94 @@ def cropped_laz(filename='./46AN1_20.LAZ'):
 
     return cropped_las
 
-def gftin(cropped_las, r_max=0.5, alpha_max=0.3):
+def gftin(cropped_las,bbx_centre=(184380,420660),size = 500, buffer = 50, r_max=0.2, alpha_max=0.3):
     # step 1, extract the lowest points from grids
-    min_x, max_x = min(cropped_las[:, 0]), max(cropped_las[:, 0])
-    min_y, max_y = min(cropped_las[:, 1]), max(cropped_las[:, 1])
+    # min_x, max_x = min(cropped_las[:, 0]), max(cropped_las[:, 0])  # use bounding box to replace this
+    # min_y, max_y = min(cropped_las[:, 1]), max(cropped_las[:, 1])
     # print(min_x,min_y,max_x,max_y)
+    min_x, max_x = bbx_centre[0]-(size/2+buffer), bbx_centre[0]+(size/2+buffer) # 500m grid with buffer 50m
+    min_y, max_y = bbx_centre[1]-(size/2+buffer), bbx_centre[1]+(size/2+buffer)
 
-    grid_len = 80 #argument
-    i, j = min_x, min_y
-    lowest_p = []
-    while i <= max_x and j <= max_y:
-        # mask for superimposing grids
-        # <= or <？？？？？？？？？
-        mask1 = (
-                (cropped_las[:, 0] >= i) & (cropped_las[:, 0] <= i + grid_len) &
-                (cropped_las[:, 1] >= j) & (cropped_las[:, 1] <= j + grid_len)
-        )
-        p_in_grid = cropped_las[mask1]
-        lowest_value = min(p_in_grid[:, 2])
-        # mask for finding the lowest point index
-        mask2 = np.isclose(p_in_grid[:, 2], lowest_value)
-        p_lowest = (p_in_grid[mask2][0])
-        lowest_p.append(p_lowest)
-        i += grid_len
-        j += grid_len
-    lowest_p = np.array(lowest_p)
-    print(lowest_p)
+    grid_len = 10 #argument
+    lowest_points = []
+    for i in np.arange(min_x, max_x, grid_len):
+        for j in np.arange(min_y, max_y, grid_len):
+            # Create a mask for points within the current grid cell
+            mask = (
+                    (cropped_las[:, 0] >= i) & (cropped_las[:, 0] <= i + grid_len) &
+                    (cropped_las[:, 1] >= j) & (cropped_las[:, 1] <= j + grid_len)
+            )
+
+            # Extract points within the grid cell
+            points_in_grid = cropped_las[mask]
+
+            if len(points_in_grid) > 0:
+                # Find the point with the lowest Z-coordinate
+                lowest_point = points_in_grid[np.argmin(points_in_grid[:, 2])]
+                lowest_points.append(lowest_point)
+            else:
+                print('empty cell')
+
+    lowest_p = np.array(lowest_points)
+    print(lowest_p.shape)
 
     # rudimentary TIN
-    # r_dl = dl.DelaunayTriangulation(lowest_p)
-    # r_dl.calculate_tri()
-    # tin = r_dl.triangles
-
     dt=startinpy.DT()
     dt.insert(lowest_p)
     new_dl = dt
-
+    mask_without_buffer = (
+                    (cropped_las[:, 0] >= min_x+buffer) & (cropped_las[:, 0] <= max_x - buffer) &
+                    (cropped_las[:, 1] >= min_y+buffer) & (cropped_las[:, 1] <= max_y - buffer))
+    cropped_las_without_buffer = cropped_las[mask_without_buffer]
+    las_len = cropped_las_without_buffer.shape[0]
+    thinned_indices = np.random.choice(las_len, size=int(len(cropped_las_without_buffer)*0.1), replace=False)
+    cropped_las_without_buffer_thinned = cropped_las_without_buffer[thinned_indices,:]
+    print(cropped_las_without_buffer_thinned)
     # step2&3 Tin refinement,First traverse the points, calculate epslon, and insert from the point closest to tin
     # until there are no points within epslon.
     e_r = 0
     e_alpha = 0
-    allpts = cropped_las.copy()
+    allpts = cropped_las_without_buffer_thinned
     print('len',len(allpts))
-    tin_pt = new_dl.triangles
-    rudi_tin_pts = new_dl.points
+    count = 0
     while e_r < r_max and e_alpha < alpha_max and len(allpts)>0:
         e_r = r_max
-        e_alpha = alpha_max
+        #e_alpha = alpha_max
         insert_pt = None
-        for m in range(len(allpts)):
-            pt = allpts[m]
-            for n in range(len(tin_pt)):
-                tri_list = list(tin_pt[n])
-                tri = rudi_tin_pts[tri_list]
-                if p_within_tri(pt,tri):
-                    r, alpha = cal_r_alpha(pt,tri)
-                    if e_r > r and e_alpha > alpha:              # 写到一行对吗，不确定？？？？？？？？？？？
-                        e_r = r
-                        e_alpha = alpha
-                        i_selected = m
-                        insert_pt = allpts[i_selected][0],allpts[i_selected][1],allpts[i_selected][2]
+        count += 1
+        print(count)
+        for i,pt in enumerate(allpts):
+            tri_index = new_dl.locate(pt[0],pt[1])
+            tri = new_dl.points[tri_index]
+            r, alpha = cal_r_alpha(pt,tri)
+            if e_r > r and alpha_max > alpha:              # 写到一行对吗，不确定？？？？？？？？？？？
+                e_r = r
+                e_alpha = alpha
+                i_selected = i
+                insert_pt = allpts[i_selected][0],allpts[i_selected][1],allpts[i_selected][2]
         if insert_pt:
             new_dl.insert_one_pt(allpts[i_selected][0], allpts[i_selected][1],allpts[i_selected][2])
             allpts = np.delete(allpts,i_selected,axis=0)
 
+
+
+    print(new_dl.points.shape)
+    ax = plt.axes(projection='3d')
+    ax.scatter(new_dl.points[:,0],new_dl.points[:,1],new_dl.points[:,2], color = "r")
+    ax.scatter(cropped_las_without_buffer_thinned[:, 0], cropped_las_without_buffer_thinned[:, 1], cropped_las_without_buffer_thinned[:, 2])
+    # min_x, max_x = int(min(points.x)), int(max(points.x)) + 1
+    # min_y, max_y = int(min(points.y)), int(max(points.y)) + 1
+    # min_z, max_z = int(min(points.z)), int(max(points.z)) + 1
+    # range = max(max_x - min_x, max_y - min_y, max_z - min_z)
+    # ax.set_xlim(min_x, min_x + range)
+    # ax.set_ylim(min_y, min_y + range)
+    # ax.set_zlim(min_z, min_z + range)
+    # ax.set_zlim(min_z, max_z)
+    plt.show()
     f = open("k.txt", "w")
-    f.writelines(new_dl.points.tolist())
+    f.writelines(str(new_dl.points.tolist()))
     f.close()
     return new_dl.points
-
-def p_within_tri(pt,tri):
-    ax = tri[0][0]
-    ay = tri[0][1]
-    bx = tri[1][0]
-    by = tri[1][1]
-    cx = tri[2][0]
-    cy = tri[2][1]
-    ptx = pt[0]
-    pty = pt[1]
-    # calculate tri_area
-    ABC = 0.5 * abs(ax * (by - cy) + bx * (cy - ay) + cx * (ay - by))
-
-    # calculate sub_tri_area
-    PBC = 0.5 * abs(ptx * (by - cy) + bx * (cy - pty) + cx * (pty - by))
-    PAC = 0.5 * abs(ax * (cy - pty) + ptx * (ay - cy) + cx * (pty - ay))
-    PAB = 0.5 * abs(ax * (pty - by) + bx * (ay - pty) + ptx * (by - ay))
-
-    # 如果子三角形的面积之和等于三角形的面积，点在三角形内
-    return abs(ABC - (PBC + PAC + PAB)) <=1e-8
 
 
 def cal_r_alpha(pt,tri):
@@ -147,6 +149,6 @@ def cal_r_alpha(pt,tri):
 
 
 if __name__ == '__main__':
-    cropped_las = cropped_laz()
-    gftin(cropped_las)
+    cropped_las = cropped_laz(size=20,buffer=30)
+    gftin(cropped_las,size=20,buffer=30)
 
